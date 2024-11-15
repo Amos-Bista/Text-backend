@@ -1,12 +1,17 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from image import ImageToTextConverter
+from translate import TextTranslator  # Import the TextTranslator class
+
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # Global list to store all converted texts
 converted_texts = []
+translator = TextTranslator()
+last_translated_text = None
+
 
 @app.route('/api/convert-image', methods=['POST'])
 def convert_image():
@@ -31,7 +36,7 @@ def convert_image():
 
                 # Create an instance of ImageToTextConverter with the image data
                 converter = ImageToTextConverter(image_data)
-                ocr_data = converter.extract_text_with_formatting()
+                ocr_data = converter.extract_text()
 
                 # Append the extracted text to the list
                 extracted_texts.append(ocr_data)  # Updated to append raw OCR data
@@ -64,6 +69,38 @@ def clear_converted_texts():
     converted_texts.clear()
     return jsonify({'message': 'All converted texts cleared.'}), 200
 
+@app.route('/translate', methods=['POST'])
+def translate_text():
+    """
+    API endpoint for text translation.
+    Expects JSON with 'text', 'src_lang', and 'dest_lang' fields.
+    """
+    data = request.json
+    text = data.get('text')
+    src_lang = data.get('src_lang', 'en')  # Default to English
+    dest_lang = data.get('dest_lang', 'ne')  # Default to Nepali
 
+    if not text:
+        return jsonify({"error": "Text to translate is required."}), 400
+
+    try:
+        last_translated_text = translator.translate(text, src_lang, dest_lang)
+
+        # translated_text = translator.translate(text, src_lang, dest_lang)
+        return jsonify({"translated_text": last_translated_text})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500 
+    
+@app.route('/api/translate', methods=['GET'])
+def get_last_translated_text():
+    """
+    API endpoint to retrieve the most recent translated text.
+    """
+    if not last_translated_text:
+        return jsonify({"message": "No translated text available."}), 200
+
+    # Return the last translated text
+    return jsonify({"last_translated_text": last_translated_text}), 200  
+    
 if __name__ == '__main__':
     app.run(debug=True)
