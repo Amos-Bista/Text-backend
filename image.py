@@ -1,6 +1,6 @@
 import cv2
 import pytesseract
-import numpy as np
+import numpy as np  
 from pytesseract import Output
 
 class ImageToTextConverter:
@@ -19,39 +19,25 @@ class ImageToTextConverter:
         # Convert to grayscale for better OCR performance
         return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    def perform_ocr_with_details(self, gray_image):
-        # Get detailed OCR information including bounding boxes and text
-        ocr_data = pytesseract.image_to_data(gray_image, output_type=Output.DICT)
-        return ocr_data
+    def perform_ocr(self, gray_image):
+        # Extract plain text from the image
+        return pytesseract.image_to_string(gray_image)
 
-    def extract_text_with_formatting(self):
-        """Main method to extract text and provide formatting info."""
+    def extract_text(self):
+        """Main method to extract text without formatting."""
         # Load and preprocess image
         image = self.load_image()
         gray_image = self.convert_to_grayscale(image)
-        ocr_data = self.perform_ocr_with_details(gray_image)
 
-        # Organize text by lines and paragraphs
-        lines = {}
-        for i in range(len(ocr_data['text'])):
-            if int(ocr_data['conf'][i]) > 60:  # Filter by confidence level
-                line_num = ocr_data['line_num'][i]
-                if line_num not in lines:
-                    lines[line_num] = []
-                lines[line_num].append((ocr_data['left'][i], ocr_data['text'][i]))
-
-        # Sort lines by their vertical position (top) and then reconstruct text
-        sorted_lines = sorted(lines.items(), key=lambda x: min([y[0] for y in x[1]]))
-        formatted_text = "\n".join(
-            " ".join(word for _, word in sorted(line[1]))
-            for line in sorted_lines
-        )
+        # Perform OCR and return raw text
+        extracted_text = self.perform_ocr(gray_image)
 
         # Optionally visualize bounding boxes and OCR results
         if self.visualize:
+            ocr_data = pytesseract.image_to_data(gray_image, output_type=Output.DICT)
             self.visualize_ocr(image, ocr_data)
 
-        return formatted_text  # Return the formatted text with original spacing and alignment
+        return extracted_text  # Return raw text without formatting
 
     def visualize_ocr(self, image, ocr_data):
         """Draw bounding boxes around detected text for visualization."""
@@ -67,5 +53,5 @@ class ImageToTextConverter:
 
 # Usage Example:
 # converter = ImageToTextConverter(image_data, visualize=True)
-# formatted_text = converter.extract_text_with_formatting()
-# print(formatted_text)
+# raw_text = converter.extract_text()
+# print(raw_text)
